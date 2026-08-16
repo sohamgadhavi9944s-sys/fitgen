@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FitGen — AI Workout Planner</title>
+<style>
+  :root{
+    --bg:#08080a;
+    --card:#131316;
+    --card2:#1a1a1e;
+    --surface:#17171a;
+    --border:#2b2a26;
+    --accent:#d4b06a;       /* champagne gold */
+    --accent-deep:#a3813f;  /* deeper bronze for gradients */
+    --accent2:#2f7d63;      /* deep emerald */
+    --ink:#14130f;          /* near-black text on gold */
+    --text:#f3efe6;         /* warm ivory */
+    --muted:#a39c8e;
+    --danger:#d9695c;
+    --warn:#dba565;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(circle at 20% -10%, #201a10 0%, var(--bg) 55%);
+    color:var(--text);
+    min-height:100vh;
+    padding:24px 16px 60px;
+  }
+  .app{
+    max-width:640px;
+    margin:0 auto;
+  }
+  header.top{
+    text-align:center;
+    margin-bottom:22px;
+  }
+  header.top h1{
+    font-size:1.7rem;
+    letter-spacing:.02em;
+    margin:0 0 4px;
+    background:linear-gradient(90deg,#f0d38f,var(--accent) 55%,var(--accent-deep));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  header.top p{
+    color:var(--muted);
+    margin:0;
+    font-size:.9rem;
+  }
+  .progress{
+    display:flex;
+    gap:6px;
+    justify-content:center;
+    margin:18px 0 26px;
+  }
+  .progress .dot{
+    width:26px;
+    height:5px;
+    border-radius:3px;
+    background:#2a2823;
+    transition:background .25s;
+  }
+  .progress .dot.active{background:var(--accent);}
+  .progress .dot.done{background:var(--accent2);}
+
+  .card{
+    background:linear-gradient(180deg,var(--card),var(--card2));
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:22px 20px;
+    box-shadow:0 10px 34px rgba(0,0,0,.45);
+  }
+  .step{display:none;}
+  .step.active{display:block; animation:fade .35s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  h2.step-title{
+    margin:0 0 4px;
+    font-size:1.15rem;
+  }
+  p.step-sub{
+    color:var(--muted);
+    margin:0 0 18px;
+    font-size:.88rem;
+  }
+
+  label{
+    display:block;
+    font-size:.82rem;
+    color:var(--muted);
+    margin:14px 0 6px;
+  }
+  input[type=number], input[type=text], input[type=password]{
+    width:100%;
+    padding:12px 14px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-size:1rem;
+    outline:none;
+  }
+  input:focus{border-color:var(--accent);}
+
+  .chip-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:6px;
+  }
+  .chip{
+    padding:10px 16px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    cursor:pointer;
+    font-size:.88rem;
+    user-select:none;
+    transition:all .15s;
+  }
+  .chip:hover{border-color:var(--accent);}
+  .chip.selected{
+    background:linear-gradient(90deg,#e6c584,var(--accent) 60%,var(--accent-deep));
+    border-color:transparent;
+    color:var(--ink);
+    font-weight:700;
+  }
+
+  .btn-row{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:24px;
+  }
+  button{
+    font-family:inherit;
+    font-size:.95rem;
+    padding:12px 20px;
+    border-radius:12px;
+    border:none;
+    cursor:pointer;
+    font-weight:600;
+  }
+  .btn-primary{
+    background:linear-gradient(90deg,#e6c584,var(--accent) 60%,var(--accent-deep));
+    color:var(--ink);
+    flex:1;
+    font-weight:700;
+  }
+  .btn-primary:disabled{
+    opacity:.4;
+    cursor:not-allowed;
+  }
+  .btn-ghost{
+    background:transparent;
+    color:var(--muted);
+    border:1px solid var(--border);
+  }
+
+  .bmi-result{
+    margin-top:16px;
+    padding:16px;
+    border-radius:14px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    text-align:center;
+  }
+  .bmi-result .val{
+    font-size:2rem;
+    font-weight:700;
+    color:var(--accent);
+  }
+  .bmi-result .cat{
+    font-size:.9rem;
+    color:var(--muted);
+    margin-top:2px;
+  }
+
+  .error-box{
+    margin-top:14px;
+    padding:12px 14px;
+    border-radius:10px;
+    background:rgba(217,105,92,.12);
+    border:1px solid rgba(217,105,92,.4);
+    color:var(--danger);
+    font-size:.85rem;
+    display:none;
+  }
+  .error-box.show{display:block;}
+
+  .remember-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:10px;
+    font-size:.8rem;
+    color:var(--muted);
+  }
+
+  .summary-list{
+    list-style:none;
+    padding:0;
+    margin:0;
+    font-size:.88rem;
+  }
+  .summary-list li{
+    padding:8px 0;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .summary-list li span:first-child{color:var(--muted);}
+
+  .loader{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    padding:30px 10px;
+  }
+  .spinner{
+    width:44px;height:44px;
+    border-radius:50%;
+    border:4px solid #2a2823;
+    border-top-color:var(--accent);
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loader p{color:var(--muted); font-size:.88rem; text-align:center;}
+
+  .plan-summary{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:18px;
+    font-size:.9rem;
+    line-height:1.5;
+  }
+  .plan-summary h3{margin:0 0 6px; font-size:1rem; color:var(--accent2);}
+  .safety-note{
+    background:rgba(219,165,101,.08);
+    border:1px solid rgba(219,165,101,.35);
+    color:var(--warn);
+    border-radius:12px;
+    padding:12px 14px;
+    font-size:.83rem;
+    margin-bottom:18px;
+  }
+
+  .section-title{
+    font-size:.95rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--accent);
+    margin:22px 0 10px;
+  }
+
+  .ex-card{
+    display:flex;
+    gap:14px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:12px;
+    margin-bottom:12px;
+    align-items:center;
+  }
+  .ex-card .gif-wrap{
+    width:96px;
+    height:96px;
+    flex:0 0 96px;
+    border-radius:12px;
+    overflow:hidden;
+    background:#0d0c0a;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ex-card .gif-wrap img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .ex-card .gif-wrap .placeholder{
+    font-size:1.6rem;
+  }
+  .ex-card .info{flex:1; min-width:0;}
+  .ex-card .info h4{
+    margin:0 0 4px;
+    font-size:.98rem;
+    color:var(--text);
+  }
+  .ex-card .info .meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:6px;
+  }
+  .tag{
+    font-size:.7rem;
+    padding:2px 8px;
+    border-radius:999px;
+    background:#25231d;
+    color:var(--accent);
+    border:1px solid var(--border);
+  }
+  .ex-card .info .note{
+    font-size:.8rem;
+    color:var(--muted);
+    line-height:1.4;
+  }
+  .simple-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px 14px;
+    margin-bottom:10px;
+    font-size:.88rem;
+  }
+  .simple-card b{display:block; margin-bottom:2px;}
+
+  footer.disclaimer{
+    margin-top:22px;
+    font-size:.72rem;
+    color:var(--muted);
+    text-align:center;
+    line-height:1.5;
+  }
+  footer.disclaimer a{color:var(--accent);}
+
+  .hero-structure{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    margin:20px 0 6px;
+    flex-wrap:wrap;
+  }
+  .hero-structure-step{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:.78rem;
+    color:var(--muted);
+    white-space:nowrap;
+  }
+  .hero-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--accent);
+    display:inline-block;
+  }
+  .hero-structure-line{
+    width:24px;
+    height:1px;
+    background:var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>FitGen</h1>
+    <p>Train with what you have. No excuses, no guesswork.</p>
+  </header>
+
+  <div class="progress" id="progressDots"></div>
+
+  <div class="card">
+
+    <!-- STEP 0: Hero / example preview -->
+    <section class="step active" data-step="0">
+      <h2 class="step-title">Every plan is built around you</h2>
+      <p class="step-sub">Your age, your equipment, your time. Nothing you can't actually do. Here's a taste of what comes out the other end:</p>
+
+      <div id="heroExampleCard">
+        <div class="simple-card">Loading a live example…</div>
+      </div>
+
+      <div class="hero-structure">
+        <div class="hero-structure-step">
+          <span class="hero-dot"></span> Warm-up
+        </div>
+        <div class="hero-structure-line"></div>
+        <div class="hero-structure-step">
+          <span class="hero-dot"></span> Main session
+        </div>
+        <div class="hero-structure-line"></div>
+        <div class="hero-structure-step">
+          <span class="hero-dot"></span> Cool-down
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <span></span>
+        <button class="btn-primary" id="toStep1">Build My Plan</button>
+      </div>
+    </section>
+
+    <!-- STEP 1: BMI -->
+    <section class="step" data-step="1">
+      <h2 class="step-title">Let's start with the basics</h2>
+      <p class="step-sub">This helps tailor intensity safely to you.</p>
+
+      <label for="age">Age (years)</label>
+      <input type="number" id="age" placeholder="e.g. 24" min="5" max="100" />
+
+      <label for="height">Height (m)</label>
+      <input type="number" id="height" placeholder="e.g. 1.72" step="0.01" min="0.5" max="2.5" />
+
+      <label for="weight">Weight (kg)</label>
+      <input type="number" id="weight" placeholder="e.g. 68" min="15" max="300" />
+
+      <div class="bmi-result" id="bmiResult" style="display:none;">
+        <div class="val" id="bmiValue">--</div>
+        <div class="cat" id="bmiCategory">--</div>
+      </div>
+
+      <div class="error-box" id="err1"></div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" data-back="0">Back</button>
+        <button class="btn-primary" id="toStep2">Continue</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: Muscle groups -->
+    <section class="step" data-step="2">
+      <h2 class="step-title">What do you want to train today?</h2>
+      <p class="step-sub">Pick one or more muscle groups.</p>
+
+      <div class="chip-grid" id="muscleChips">
+        <div class="chip" data-value="Chest">Chest</div>
+        <div class="chip" data-value="Back">Back</div>
+        <div class="chip" data-value="Shoulders">Shoulders</div>
+        <div class="chip" data-value="Arms">Arms</div>
+        <div class="chip" data-value="Core">Core / Abs</div>
+        <div class="chip" data-value="Legs">Legs</div>
+        <div class="chip" data-value="Cardio">Cardio</div>
+        <div class="chip" data-value="Full Body">Full Body</div>
+      </div>
+
+      <div class="error-box" id="err2"></div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" data-back="1">Back</button>
+        <button class="btn-primary" id="toStep3">Continue</button>
+      </div>
+    </section>
+
+    <!-- STEP 3: Equipment -->
+    <section class="step" data-step="3">
+      <h2 class="step-title">What equipment do you have available?</h2>
+      <p class="step-sub">We'll only build your plan around what you select.</p>
+
+      <div class="chip-grid" id="equipmentChips">
+        <div class="chip" data-value="Yoga Mat">Yoga Mat</div>
+        <div class="chip" data-value="Dumbbells">Dumbbells</div>
+        <div class="chip" data-value="Kettlebell">Kettlebell</div>
+        <div class="chip" data-value="Pull-up Bar">Pull-up Bar</div>
+        <div class="chip" data-value="Dip Bar">Dip Bar</div>
+        <div class="chip" data-value="Bodyweight Only">Bodyweight Only</div>
+      </div>
+
+      <label for="otherEquip">Other equipment (optional)</label>
+      <input type="text" id="otherEquip" placeholder="e.g. resistance bands, barbell" />
+
+      <div class="btn-row">
+        <button class="btn-ghost" data-back="2">Back</button>
+        <button class="btn-primary" id="toStep4">Continue</button>
+      </div>
+    </section>
+
+    <!-- STEP 4: Time -->
+    <section class="step" data-step="4">
+      <h2 class="step-title">How much time do you have today?</h2>
+      <p class="step-sub">No worries if it's short — we'll make it count.</p>
+
+      <div class="chip-grid" id="timeChips">
+        <div class="chip" data-value="20">20 min</div>
+        <div class="chip" data-value="30">30 min</div>
+        <div class="chip" data-value="40">40 min</div>
+        <div class="chip" data-value="60">1 hr</div>
+        <div class="chip" data-value="120">2 hrs</div>
+        <div class="chip" data-value="other">Other</div>
+      </div>
+
+      <div id="otherTimeWrap" style="display:none;">
+        <label for="otherTime">Custom time (minutes)</label>
+        <input type="number" id="otherTime" placeholder="e.g. 45" min="5" max="240" />
+      </div>
+
+      <div class="error-box" id="err4"></div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" data-back="3">Back</button>
+        <button class="btn-primary" id="toStep5">Continue</button>
+      </div>
+    </section>
+
+    <!-- STEP 5: API key + Review + Generate -->
+    <section class="step" data-step="5">
+      <h2 class="step-title">Review & generate</h2>
+      <p class="step-sub">Your plan is built live by Gemini 3 Flash, routed securely through your own proxy.</p>
+
+      <ul class="summary-list" id="summaryList"></ul>
+
+      <div class="error-box" id="err5"></div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" data-back="4">Back</button>
+        <button class="btn-primary" id="generateBtn">Generate My Workout</button>
+      </div>
+    </section>
+
+    <!-- LOADING -->
+    <section class="step" data-step="loading">
+      <div class="loader">
+        <div class="spinner"></div>
+        <p id="loadingMsg">Building your personalized plan…</p>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section class="step" data-step="results">
+      <h2 class="step-title" id="resultTitle">Your Workout Plan</h2>
+
+      <div class="plan-summary" id="planSummaryBox" style="display:none;">
+        <h3>Overview</h3>
+        <p id="planSummaryText"></p>
+      </div>
+
+      <div class="safety-note" id="safetyNoteBox" style="display:none;"></div>
+
+      <div id="warmupSection"></div>
+      <div id="mainSection"></div>
+      <div id="cooldownSection"></div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" id="restartBtn">Start Over</button>
+        <button class="btn-primary" id="regenBtn">Regenerate</button>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="disclaimer">
+    FitGen provides general fitness guidance only and is not a substitute for professional medical advice.
+    Stop any exercise that causes pain and consult a doctor before starting a new routine, especially if you
+    have an existing health condition. Exercise media © <a href="https://gymvisual.com/" style="color:var(--muted);">Gym visual</a>,
+    used via the open <a href="https://github.com/hasaneyldrm/exercises-dataset" style="color:var(--muted);">exercises-dataset</a> project.
+  </footer>
+</div>
+
+<script>
+/* ==========================================================================
+   FitGen — AI Workout Planner
+   Data source: hasaneyldrm/exercises-dataset (MIT license, media © Gym visual)
+   AI: Gemini 3 Flash Preview (generateContent REST API)
+   ========================================================================== */
+
+const EXERCISE_DB_URL = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/data/exercises.json";
+const MEDIA_BASE = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/";
+
+// Your Gemini API key lives only on your Deno Worker — never in this file.
+const WORKER_URL = "https://funny-asp-1966.sohamgadhavi9944s-sys.deno.net";
+
+const STEP_ORDER = ["0", "1", "2", "3", "4", "5", "loading", "results"];
+
+const state = {
+  age: null,
+  height: null,
+  weight: null,
+  bmi: null,
+  bmiCategory: null,
+  muscleGroups: [],
+  equipment: [],
+  otherEquipment: "",
+  timeMinutes: null,
+  timeLabel: null
+};
+
+let exerciseDB = [];
+let candidatePool = [];
+let lastPlan = null;
+
+/* ---------------------------- Helpers: DOM ---------------------------- */
+const $ = (sel) => document.querySelector(sel);
+const $all = (sel) => Array.from(document.querySelectorAll(sel));
+
+function showStep(name) {
+  $all(".step").forEach((el) => el.classList.toggle("active", el.dataset.step === name));
+  renderProgress(name);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderProgress(current) {
+  const dots = $("#progressDots");
+  const visibleSteps = ["1", "2", "3", "4", "5"];
+  if (current === "0" || current === "loading" || current === "results") {
+    dots.innerHTML = "";
+    return;
+  }
+  const idx = visibleSteps.indexOf(current);
+  dots.innerHTML = visibleSteps
+    .map((s, i) => {
+      let cls = "dot";
+      if (i < idx) cls += " done";
+      if (i === idx) cls += " active";
+      return `<div class="${cls}"></div>`;
+    })
+    .join("");
+}
+
+function showError(boxId, msg) {
+  const box = $(boxId);
+  box.textContent = msg;
+  box.classList.add("show");
+}
+function clearError(boxId) {
+  const box = $(boxId);
+  box.textContent = "";
+  box.classList.remove("show");
+}
+
+/* ---------------------------- Chip toggling ---------------------------- */
+function setupChipGroup(containerSel, targetArray, { single = false, onChange } = {}) {
+  $all(`${containerSel} .chip`).forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const val = chip.dataset.value;
+      if (single) {
+        $all(`${containerSel} .chip`).forEach((c) => c.classList.remove("selected"));
+        chip.classList.add("selected");
+        targetArray.length = 0;
+        targetArray.push(val);
+      } else {
+        const idx = targetArray.indexOf(val);
+        if (idx >= 0) {
+          targetArray.splice(idx, 1);
+          chip.classList.remove("selected");
+        } else {
+          targetArray.push(val);
+          chip.classList.add("selected");
+        }
+      }
+      if (onChange) onChange(val, chip);
+    });
+  });
+}
+
+/* ---------------------------- BMI logic ---------------------------- */
+function calcBMI(weightKg, heightM) {
+  const bmi = weightKg / (heightM * heightM);
+  return Math.round(bmi * 10) / 10;
+}
+function bmiCategory(bmi) {
+  if (bmi < 18.5) return "Underweight";
+  if (bmi < 25) return "Normal weight";
+  if (bmi < 30) return "Overweight";
+  return "Obese";
+}
+
+$("#age").addEventListener("input", updateBmiPreview);
+$("#height").addEventListener("input", updateBmiPreview);
+$("#weight").addEventListener("input", updateBmiPreview);
+
+function updateBmiPreview() {
+  const h = parseFloat($("#height").value);
+  const w = parseFloat($("#weight").value);
+  const box = $("#bmiResult");
+  if (h > 0 && w > 0) {
+    const bmi = calcBMI(w, h);
+    $("#bmiValue").textContent = bmi;
+    $("#bmiCategory").textContent = bmiCategory(bmi);
+    box.style.display = "block";
+  } else {
+    box.style.display = "none";
+  }
+}
+
+$("#toStep1").addEventListener("click", () => showStep("1"));
+
+$("#toStep2").addEventListener("click", () => {
+  clearError("#err1");
+  const age = parseInt($("#age").value, 10);
+  const h = parseFloat($("#height").value);
+  const w = parseFloat($("#weight").value);
+
+  if (!age || age < 5 || age > 100) return showError("#err1", "Please enter a valid age (5–100).");
+  if (!h || h < 0.5 || h > 2.5) return showError("#err1", "Please enter height in meters (e.g. 1.72).");
+  if (!w || w < 15 || w > 300) return showError("#err1", "Please enter a valid weight in kg.");
+
+  state.age = age;
+  state.height = h;
+  state.weight = w;
+  state.bmi = calcBMI(w, h);
+  state.bmiCategory = bmiCategory(state.bmi);
+
+  showStep("2");
+});
+
+/* ---------------------------- Step 2: muscle groups ---------------------------- */
+setupChipGroup("#muscleChips", state.muscleGroups);
+
+$("#toStep3").addEventListener("click", () => {
+  clearError("#err2");
+  if (state.muscleGroups.length === 0) return showError("#err2", "Pick at least one muscle group.");
+  showStep("3");
+});
+
+/* ---------------------------- Step 3: equipment ---------------------------- */
+setupChipGroup("#equipmentChips", state.equipment, {
+  onChange: (val, chip) => {
+    if (val === "Bodyweight Only" && chip.classList.contains("selected")) {
+      $all("#equipmentChips .chip").forEach((c) => {
+        if (c.dataset.value !== "Bodyweight Only") {
+          c.classList.remove("selected");
+          const i = state.equipment.indexOf(c.dataset.value);
+          if (i >= 0) state.equipment.splice(i, 1);
+        }
+      });
+    } else if (val !== "Bodyweight Only") {
+      const bwChip = $all("#equipmentChips .chip").find((c) => c.dataset.value === "Bodyweight Only");
+      if (bwChip && bwChip.classList.contains("selected")) {
+        bwChip.classList.remove("selected");
+        const i = state.equipment.indexOf("Bodyweight Only");
+        if (i >= 0) state.equipment.splice(i, 1);
+      }
+    }
+  }
+});
+
+$("#toStep4").addEventListener("click", () => {
+  state.otherEquipment = $("#otherEquip").value.trim();
+  showStep("4");
+});
+
+/* ---------------------------- Step 4: time ---------------------------- */
+const timeSelection = [];
+setupChipGroup("#timeChips", timeSelection, {
+  single: true,
+  onChange: (val) => {
+    $("#otherTimeWrap").style.display = val === "other" ? "block" : "none";
+  }
+});
+
+$("#toStep5").addEventListener("click", () => {
+  clearError("#err4");
+  if (timeSelection.length === 0) return showError("#err4", "Please choose how much time you have.");
+  const val = timeSelection[0];
+  if (val === "other") {
+    const mins = parseInt($("#otherTime").value, 10);
+    if (!mins || mins < 5 || mins > 240) return showError("#err4", "Enter a valid number of minutes (5–240).");
+    state.timeMinutes = mins;
+    state.timeLabel = `${mins} min`;
+  } else {
+    state.timeMinutes = parseInt(val, 10);
+    state.timeLabel = val >= 60 ? `${val / 60} hr` : `${val} min`;
+  }
+  renderSummary();
+  showStep("5");
+});
+
+/* ---------------------------- Step 5: summary + generate ---------------------------- */
+function renderSummary() {
+  const equipText = state.equipment.length
+    ? state.equipment.join(", ") + (state.otherEquipment ? `, ${state.otherEquipment}` : "")
+    : "Bodyweight only";
+
+  const rows = [
+    ["Age", `${state.age} yrs`],
+    ["BMI", `${state.bmi} (${state.bmiCategory})`],
+    ["Focus today", state.muscleGroups.join(", ")],
+    ["Equipment", equipText],
+    ["Time available", state.timeLabel]
+  ];
+  $("#summaryList").innerHTML = rows
+    .map(([k, v]) => `<li><span>${k}</span><span>${v}</span></li>`)
+    .join("");
+}
+
+$all("[data-back]").forEach((btn) => {
+  btn.addEventListener("click", () => showStep(btn.dataset.back));
+});
+
+$("#generateBtn").addEventListener("click", () => runGeneration());
+$("#regenBtn").addEventListener("click", () => runGeneration());
+$("#restartBtn").addEventListener("click", () => location.reload());
+
+/* ---------------------------- Exercise DB loading & filtering ---------------------------- */
+async function loadExerciseDB() {
+  if (exerciseDB.length) return exerciseDB;
+  const res = await fetch(EXERCISE_DB_URL);
+  if (!res.ok) throw new Error("Could not load the exercise database. Please try again.");
+  exerciseDB = await res.json();
+  return exerciseDB;
+}
+
+function needsPullupBar(name) {
+  return /pull-?up|chin-?up|muscle-?up|toes to bar|hanging (leg|knee) raise/i.test(name);
+}
+function needsDipBar(name) {
+  return /\bdip\b/i.test(name) && !/bench dip/i.test(name);
+}
+function isRiskyForAge(name, age) {
+  const risky = /snatch|clean\s*(and|&)?\s*jerk|\bjerk\b|box jump|depth jump|plyometric|drop jump|one arm push|single[- ]arm overhead|behind[- ]the[- ]neck|barbell full squat|barbell deadlift/i;
+  if ((age >= 55 || age < 14) && risky.test(name)) return true;
+  return false;
+}
+
+const MUSCLE_MAP = {
+  Chest: ["chest"],
+  Back: ["back"],
+  Shoulders: ["shoulders"],
+  Arms: ["upper arms", "lower arms"],
+  Core: ["waist"],
+  Legs: ["upper legs", "lower legs"],
+  Cardio: ["cardio"],
+  "Full Body": null
+};
+
+function buildAllowedEquipmentTags() {
+  const tags = new Set(["body weight"]);
+  if (state.equipment.includes("Dumbbells")) tags.add("dumbbell");
+  if (state.equipment.includes("Kettlebell")) tags.add("kettlebell");
+
+  const other = state.otherEquipment.toLowerCase();
+  const otherMap = {
+    band: "band",
+    barbell: "barbell",
+    cable: "cable",
+    "stability ball": "stability ball",
+    "smith machine": "smith machine",
+    "leverage machine": "leverage machine",
+    "ez bar": "ez barbell",
+    machine: "leverage machine"
+  };
+  Object.keys(otherMap).forEach((key) => {
+    if (other.includes(key)) tags.add(otherMap[key]);
+  });
+  return tags;
+}
+
+function getCandidatePool() {
+  const allowedTags = buildAllowedEquipmentTags();
+  const wantsFullBody = state.muscleGroups.includes("Full Body");
+  const allowedCategories = wantsFullBody
+    ? null
+    : new Set(state.muscleGroups.flatMap((g) => MUSCLE_MAP[g] || []));
+
+  let pool = exerciseDB.filter((ex) => {
+    const tag = (ex.equipment || "").toLowerCase();
+    if (!allowedTags.has(tag)) return false;
+
+    if (tag === "body weight") {
+      if (needsPullupBar(ex.name) && !state.equipment.includes("Pull-up Bar")) return false;
+      if (needsDipBar(ex.name) && !state.equipment.includes("Dip Bar")) return false;
+    }
+
+    if (allowedCategories && !allowedCategories.has((ex.category || "").toLowerCase())) return false;
+
+    if (isRiskyForAge(ex.name, state.age)) return false;
+
+    return true;
+  });
+
+  if (pool.length < 6) {
+    pool = exerciseDB.filter((ex) => {
+      const tag = (ex.equipment || "").toLowerCase();
+      if (tag !== "body weight") return false;
+      if (needsPullupBar(ex.name) && !state.equipment.includes("Pull-up Bar")) return false;
+      if (needsDipBar(ex.name) && !state.equipment.includes("Dip Bar")) return false;
+      if (isRiskyForAge(ex.name, state.age)) return false;
+      return true;
+    });
+  }
+
+  if (pool.length > 55) {
+    pool = shuffle(pool).slice(0, 55);
+  }
+  return pool;
+}
+
+function getWarmupCooldownPool() {
+  // Broad, gentle bodyweight moves (not restricted to today's muscle focus)
+  // so warmup/cooldown picks can also get a matching animation.
+  let pool = exerciseDB.filter((ex) => {
+    const tag = (ex.equipment || "").toLowerCase();
+    if (tag !== "body weight") return false;
+    if (needsPullupBar(ex.name) && !state.equipment.includes("Pull-up Bar")) return false;
+    if (needsDipBar(ex.name) && !state.equipment.includes("Dip Bar")) return false;
+    if (isRiskyForAge(ex.name, state.age)) return false;
+    return true;
+  });
+  if (pool.length > 40) {
+    pool = shuffle(pool).slice(0, 40);
+  }
+  return pool;
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ---------------------------- Gemini call ---------------------------- */
+function buildPrompt(candidates, warmupPool) {
+  const candidateList = candidates
+    .map((c) => `${c.name} | category: ${c.category} | target: ${c.target} | equipment: ${c.equipment}`)
+    .join("\n");
+
+  const warmupList = warmupPool
+    .map((c) => `${c.name} | category: ${c.category} | target: ${c.target}`)
+    .join("\n");
+
+  const equipText = state.equipment.length
+    ? state.equipment.join(", ") + (state.otherEquipment ? `, ${state.otherEquipment}` : "")
+    : "Bodyweight only";
+
+  return `You are a certified fitness coach AI. Build a safe, well-structured single workout session.
+
+USER PROFILE:
+- Age: ${state.age}
+- BMI: ${state.bmi} (${state.bmiCategory})
+- Muscle groups to train today: ${state.muscleGroups.join(", ")}
+- Time available: approximately ${state.timeMinutes} minutes total
+- Equipment confirmed available: ${equipText}
+
+STRICT RULES:
+1. For the "main" section, ONLY choose exercises from CANDIDATE LIST A below, and copy each "name" EXACTLY as written there (same spelling/case). Never invent an exercise or assume equipment that isn't listed.
+2. For the "warmup" and "cooldown" sections, ONLY choose moves from CANDIDATE LIST B below (general bodyweight/mobility moves), copying each "name" EXACTLY as written there. Pick moves that gently prepare/cool down the muscles used in the main session.
+3. Fit the whole session (warmup + main + cooldown) into about ${state.timeMinutes} minutes total.
+4. Tailor sets, reps and rest to the user's age and BMI category so nothing here risks injury: favor controlled tempo, lower-impact choices and more warmup/rest for age 55+, for age under 16, and for Underweight or Obese BMI categories. Keep loads and volume conservative and realistic for a home workout.
+5. Give each exercise a short "note" with a key safety/form cue.
+6. Output ONLY valid minified JSON with no markdown fences and no extra commentary, matching exactly this schema:
+{"warmup":[{"name":"","duration_min":0,"note":""}],"main":[{"name":"","sets":0,"reps":"","rest_sec":0,"note":""}],"cooldown":[{"name":"","duration_min":0,"note":""}],"summary":"","safety_notes":""}
+
+CANDIDATE LIST A — main exercises (name | category | target | equipment):
+${candidateList}
+
+CANDIDATE LIST B — warmup/cooldown moves (name | category | target):
+${warmupList}`;
+}
+
+async function callGemini(candidates, warmupPool) {
+  const res = await fetch(WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: buildPrompt(candidates, warmupPool) })
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = (await res.json()).error || "";
+    } catch (e) {}
+    throw new Error(`Proxy error (${res.status}). ${detail || "Check your Worker is deployed and has GEMINI_API_KEY set."}`);
+  }
+
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini returned an empty response. Please try regenerating.");
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("Couldn't parse the plan Gemini returned. Please try regenerating.");
+  }
+}
+
+/* ---------------------------- Generation flow ---------------------------- */
+async function runGeneration() {
+  clearError("#err5");
+
+  showStep("loading");
+  $("#loadingMsg").textContent = "Loading exercise library…";
+
+  try {
+    await loadExerciseDB();
+    candidatePool = getCandidatePool();
+    const warmupPool = getWarmupCooldownPool();
+
+    $("#loadingMsg").textContent = "Gemini is designing your session…";
+    lastPlan = await callGemini(candidatePool, warmupPool);
+
+    renderResults(lastPlan);
+    showStep("results");
+  } catch (err) {
+    showStep("5");
+    showError("#err5", err.message || "Something went wrong. Please try again.");
+  }
+}
+
+/* ---------------------------- Rendering results ---------------------------- */
+function findExerciseByName(name) {
+  if (!name) return null;
+  const lower = name.trim().toLowerCase();
+  let match = exerciseDB.find((e) => e.name.toLowerCase() === lower);
+  if (!match) match = exerciseDB.find((e) => e.name.toLowerCase().includes(lower) || lower.includes(e.name.toLowerCase()));
+  return match || null;
+}
+
+function mediaUrl(path) {
+  return path ? MEDIA_BASE + path : null;
+}
+
+function exerciseCardHTML(item, dbMatch, kind) {
+  const gif = dbMatch ? mediaUrl(dbMatch.gif_url) : null;
+  const target = dbMatch ? dbMatch.target : "";
+  const equip = dbMatch ? dbMatch.equipment : "Bodyweight";
+
+  const mediaHTML = gif
+    ? `<img src="${gif}" alt="${escapeHtml(item.name)} demonstration" loading="lazy" />`
+    : `<div class="placeholder">🏋️</div>`;
+
+  let metaLine = "";
+  if (kind === "main") {
+    metaLine = `<span class="tag">${item.sets || "-"} sets</span><span class="tag">${escapeHtml(String(item.reps || "-"))} reps</span><span class="tag">${item.rest_sec || 0}s rest</span>`;
+    if (target) metaLine += `<span class="tag">${escapeHtml(target)}</span>`;
+    if (equip) metaLine += `<span class="tag">${escapeHtml(equip)}</span>`;
+  } else {
+    metaLine = `<span class="tag">${item.duration_min || 0} min</span>`;
+  }
+
+  return `
+  <div class="ex-card">
+    <div class="gif-wrap">${mediaHTML}</div>
+    <div class="info">
+      <h4>${escapeHtml(item.name)}</h4>
+      <div class="meta">${metaLine}</div>
+      <div class="note">${escapeHtml(item.note || "")}</div>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str == null ? "" : String(str);
+  return div.innerHTML;
+}
+
+function renderResults(plan) {
+  $("#planSummaryBox").style.display = plan.summary ? "block" : "none";
+  $("#planSummaryText").textContent = plan.summary || "";
+
+  $("#safetyNoteBox").style.display = plan.safety_notes ? "block" : "none";
+  $("#safetyNoteBox").textContent = plan.safety_notes ? `⚠️ ${plan.safety_notes}` : "";
+
+  const warmup = Array.isArray(plan.warmup) ? plan.warmup : [];
+  const main = Array.isArray(plan.main) ? plan.main : [];
+  const cooldown = Array.isArray(plan.cooldown) ? plan.cooldown : [];
+
+  $("#warmupSection").innerHTML = warmup.length
+    ? `<div class="section-title">Warm-up</div>` +
+      warmup.map((w) => exerciseCardHTML(w, findExerciseByName(w.name), "warmup")).join("")
+    : "";
+
+  $("#mainSection").innerHTML = main.length
+    ? `<div class="section-title">Workout</div>` +
+      main.map((m) => exerciseCardHTML(m, findExerciseByName(m.name), "main")).join("")
+    : `<div class="simple-card">No exercises matched — please try Regenerate.</div>`;
+
+  $("#cooldownSection").innerHTML = cooldown.length
+    ? `<div class="section-title">Cool-down</div>` +
+      cooldown.map((c) => exerciseCardHTML(c, findExerciseByName(c.name), "cooldown")).join("")
+    : "";
+}
+
+/* ---------------------------- Init ---------------------------- */
+async function loadHeroExample() {
+  const wrap = $("#heroExampleCard");
+  try {
+    await loadExerciseDB();
+    const preferredNames = ["Push-Up", "Push Up", "Bodyweight Squat", "Squat", "Plank"];
+    let example = null;
+    for (const name of preferredNames) {
+      example = exerciseDB.find(
+        (e) => e.name.toLowerCase() === name.toLowerCase() && (e.equipment || "").toLowerCase() === "body weight"
+      );
+      if (example) break;
+    }
+    if (!example) {
+      example = exerciseDB.find((e) => (e.equipment || "").toLowerCase() === "body weight");
+    }
+    if (!example) throw new Error("no example found");
+
+    wrap.innerHTML = exerciseCardHTML(
+      { name: example.name, sets: 3, reps: "10-12", rest_sec: 45, note: "Real animated form guidance, matched to your equipment." },
+      example,
+      "main"
+    );
+  } catch (e) {
+    wrap.innerHTML = `<div class="simple-card">Example preview couldn't load, but your real plan still will.</div>`;
+  }
+}
+
+(function init() {
+  showStep("0");
+  loadHeroExample();
+})();
+</script>
+</body>
+</html>

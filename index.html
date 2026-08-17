@@ -517,6 +517,21 @@
         <div class="chip" data-value="Full Body">Full Body</div>
       </div>
 
+      <label style="margin-top:20px;">What's your main goal?</label>
+      <div class="chip-grid" id="goalChips">
+        <div class="chip" data-value="Strength">Strength</div>
+        <div class="chip" data-value="Muscle Gain">Muscle Gain</div>
+        <div class="chip" data-value="Fat Loss">Fat Loss</div>
+        <div class="chip" data-value="General Fitness">General Fitness</div>
+      </div>
+
+      <label style="margin-top:16px;">How experienced are you?</label>
+      <div class="chip-grid" id="experienceChips">
+        <div class="chip" data-value="Beginner">Beginner</div>
+        <div class="chip" data-value="Intermediate">Intermediate</div>
+        <div class="chip" data-value="Advanced">Advanced</div>
+      </div>
+
       <div class="error-box" id="err2"></div>
 
       <div class="btn-row">
@@ -654,6 +669,8 @@ const state = {
   bmi: null,
   bmiCategory: null,
   muscleGroups: [],
+  goal: null,
+  experience: null,
   equipment: [],
   otherEquipment: "",
   timeMinutes: null,
@@ -779,12 +796,22 @@ $("#toStep2").addEventListener("click", () => {
   showStep("2");
 });
 
-/* ---------------------------- Step 2: muscle groups ---------------------------- */
+/* ---------------------------- Step 2: muscle groups, goal, experience ---------------------------- */
 setupChipGroup("#muscleChips", state.muscleGroups);
+
+const goalSelection = [];
+setupChipGroup("#goalChips", goalSelection, { single: true });
+
+const experienceSelection = [];
+setupChipGroup("#experienceChips", experienceSelection, { single: true });
 
 $("#toStep3").addEventListener("click", () => {
   clearError("#err2");
   if (state.muscleGroups.length === 0) return showError("#err2", "Pick at least one muscle group.");
+  if (goalSelection.length === 0) return showError("#err2", "Pick your main goal.");
+  if (experienceSelection.length === 0) return showError("#err2", "Pick your experience level.");
+  state.goal = goalSelection[0];
+  state.experience = experienceSelection[0];
   showStep("3");
 });
 
@@ -851,6 +878,8 @@ function renderSummary() {
     ["Age", `${state.age} yrs`],
     ["BMI", `${state.bmi} (${state.bmiCategory})`],
     ["Focus today", state.muscleGroups.join(", ")],
+    ["Goal", state.goal],
+    ["Experience", state.experience],
     ["Equipment", equipText],
     ["Time available", state.timeLabel]
   ];
@@ -886,6 +915,12 @@ function isRiskyForAge(name, age) {
   const risky = /snatch|clean\s*(and|&)?\s*jerk|\bjerk\b|box jump|depth jump|plyometric|drop jump|one arm push|single[- ]arm overhead|behind[- ]the[- ]neck|barbell full squat|barbell deadlift/i;
   if ((age >= 55 || age < 14) && risky.test(name)) return true;
   return false;
+}
+
+function isRiskyForBeginner(name, experience) {
+  if (experience !== "Beginner") return false;
+  const advanced = /snatch|clean\s*(and|&)?\s*jerk|\bjerk\b|box jump|depth jump|plyometric|drop jump|one arm|single[- ]arm overhead|behind[- ]the[- ]neck|muscle-?up|pistol squat|barbell full squat|barbell deadlift/i;
+  return advanced.test(name);
 }
 
 const MUSCLE_MAP = {
@@ -940,6 +975,7 @@ function getCandidatePool() {
     if (allowedCategories && !allowedCategories.has((ex.category || "").toLowerCase())) return false;
 
     if (isRiskyForAge(ex.name, state.age)) return false;
+    if (isRiskyForBeginner(ex.name, state.experience)) return false;
 
     return true;
   });
@@ -951,6 +987,7 @@ function getCandidatePool() {
       if (needsPullupBar(ex.name) && !state.equipment.includes("Pull-up Bar")) return false;
       if (needsDipBar(ex.name) && !state.equipment.includes("Dip Bar")) return false;
       if (isRiskyForAge(ex.name, state.age)) return false;
+      if (isRiskyForBeginner(ex.name, state.experience)) return false;
       return true;
     });
   }
@@ -970,6 +1007,7 @@ function getWarmupCooldownPool() {
     if (needsPullupBar(ex.name) && !state.equipment.includes("Pull-up Bar")) return false;
     if (needsDipBar(ex.name) && !state.equipment.includes("Dip Bar")) return false;
     if (isRiskyForAge(ex.name, state.age)) return false;
+    if (isRiskyForBeginner(ex.name, state.experience)) return false;
     return true;
   });
   if (pool.length > 40) {
@@ -1007,6 +1045,8 @@ USER PROFILE:
 - Age: ${state.age}
 - BMI: ${state.bmi} (${state.bmiCategory})
 - Muscle groups to train today: ${state.muscleGroups.join(", ")}
+- Goal: ${state.goal}
+- Experience level: ${state.experience}
 - Time available: approximately ${state.timeMinutes} minutes total
 - Equipment confirmed available: ${equipText}
 
@@ -1015,8 +1055,10 @@ STRICT RULES:
 2. For the "warmup" and "cooldown" sections, ONLY choose moves from CANDIDATE LIST B below (general bodyweight/mobility moves), copying each "name" EXACTLY as written there. Pick moves that gently prepare/cool down the muscles used in the main session.
 3. Fit the whole session (warmup + main + cooldown) into about ${state.timeMinutes} minutes total.
 4. Tailor sets, reps and rest to the user's age and BMI category so nothing here risks injury: favor controlled tempo, lower-impact choices and more warmup/rest for age 55+, for age under 16, and for Underweight or Obese BMI categories. Keep loads and volume conservative and realistic for a home workout.
-5. Give each exercise a short "note" with a key safety/form cue.
-6. Output ONLY valid minified JSON with no markdown fences and no extra commentary, matching exactly this schema:
+5. Tailor rep ranges and rest to the stated Goal: Strength → lower reps (roughly 3-6), longer rest (90-180s), fewer total exercises done well; Muscle Gain → moderate reps (8-12), moderate rest (60-90s); Fat Loss → higher reps (12-20) or timed circuits, short rest (30-45s), more total movement; General Fitness → balanced moderate reps and rest across the session.
+6. Tailor complexity to Experience level: Beginner → simpler, more stable movements, extra form cues in "note", more conservative volume; Intermediate → standard progressions; Advanced → can include more demanding compound or unilateral movements from the candidate list and slightly higher volume, but still respect the age/BMI safety rule above, which always takes priority over experience level.
+7. Give each exercise a short "note" with a key safety/form cue.
+8. Output ONLY valid minified JSON with no markdown fences and no extra commentary, matching exactly this schema:
 {"warmup":[{"name":"","duration_min":0,"note":""}],"main":[{"name":"","sets":0,"reps":"","rest_sec":0,"note":""}],"cooldown":[{"name":"","duration_min":0,"note":""}],"summary":"","safety_notes":""}
 
 CANDIDATE LIST A — main exercises (name | category | target | equipment):
@@ -1176,6 +1218,8 @@ function saveToHistory(plan) {
       muscleGroups: state.muscleGroups.slice(),
       equipment: state.equipment.slice(),
       otherEquipment: state.otherEquipment,
+      goal: state.goal,
+      experience: state.experience,
       timeLabel: state.timeLabel,
       plan: plan
     };
@@ -1208,12 +1252,13 @@ function historyCardHTML(entry) {
   const equipText = entry.equipment.length
     ? entry.equipment.join(", ") + (entry.otherEquipment ? `, ${entry.otherEquipment}` : "")
     : "Bodyweight only";
+  const goalText = entry.goal ? `${entry.goal} · ` : "";
   return `
   <div class="history-card" data-id="${entry.id}">
     <div class="hc-info">
       <div class="hc-date">${formatHistoryDate(entry.date)}</div>
       <div class="hc-focus">${escapeHtml(entry.muscleGroups.join(", "))}</div>
-      <div class="hc-meta">${escapeHtml(entry.timeLabel)} · ${escapeHtml(equipText)}</div>
+      <div class="hc-meta">${escapeHtml(goalText)}${escapeHtml(entry.timeLabel)} · ${escapeHtml(equipText)}</div>
     </div>
     <button class="hc-delete" data-delete-id="${entry.id}" aria-label="Delete">✕</button>
   </div>`;
